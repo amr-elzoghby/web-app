@@ -12,6 +12,10 @@ on:
 
 jobs:
   build-and-deploy:
+
+    permissions:
+      id-token: write
+      contents: read
     runs-on: ubuntu-latest
 
     permissions:
@@ -39,7 +43,7 @@ jobs:
     - name: Configure AWS Credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
-           role-to-assume: arn:aws:iam::644981759771:oidc-provider/token.actions.githubusercontent.com 
+           role-to-assume: arn:aws:iam::644981759771:role/GitHubActionRole 
            aws-region: us-east-1
 
     - name: Deploy to EC2 via SSM
