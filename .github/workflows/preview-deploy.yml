@@ -5,26 +5,47 @@ on:
     types: [labeled]
 
 jobs:
-  check-and-name: 
-
+  build-and-update:
     if: github.event.label.name == 'pr-deploy'
     runs-on: ubuntu-latest
-    
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v6
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
 
-      - name: Create Dynamic Name
-        id: set-name
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Build and Push Docker Image
         run: |
-          PR_NUMBER=${{ github.event.pull_request.number }}
-
-          DEPLOY_NAME="v${PR_NUMBER}-pr"
+          echo "Building image for ${{ env.IMAGE_TAG }}..."
+          docker build -t 3mrlmlops/webapp-frontend:${{ env.IMAGE_TAG }} .
+          docker push 3mrlmlops/webapp-frontend:${{ env.IMAGE_TAG }}
           
-          echo "The dynamic name is: $DEPLOY_NAME"
-          
-          echo "DEPLOY_NAME=$DEPLOY_NAME" >> $GITHUB_ENV
+      - name: Checkout GitOps Repo
+        uses: actions/checkout@v4
+        with:
+          repository: 3MR-MLops/web-app-gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops-folder 
 
-      - name: Print Confirmation
+      - name: Create Temporary Manifest
         run: |
-          echo "The dynamic name is : ${{ env.DEPLOY_NAME }}
+          cd gitops-folder
+          cp deployment.yaml deployment-${{ env.IMAGE_TAG }}.yaml
+          sed -i "s|image: .*|image: 3mrlmlops/webapp-frontend:${{ env.IMAGE_TAG }}|g" deployment-${{ env.IMAGE_TAG }}.yaml
+
+      - name: Push new file to GitOps Repo
+        run: |
+          cd gitops-folder
+          git config user.name "GitHub Actions Bot"
+          git config user.email "bot@github.com"
+          git add deployment-${{ env.IMAGE_TAG }}.yaml
+          git commit -m "Deploy preview environment for ${{ env.IMAGE_TAG }}"
+          git push
