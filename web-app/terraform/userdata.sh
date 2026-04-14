@@ -4,7 +4,6 @@
 # Runs once on first launch. All output is logged to /var/log/userdata.log
 # =============================================================================
 exec > /var/log/userdata.log 2>&1
-set -e  # stop on any error so we know exactly where it failed
 echo "=== ShopMicro Deploy Start: $(date) ==="
 
 # ── 1. Swap Space (critical for t3.micro — only 1GB RAM) ──────────────────────
@@ -23,19 +22,25 @@ systemctl start docker
 systemctl enable docker
 usermod -aG docker ubuntu
 
-# Install AWS CLI v2 (more reliable than apt for Ubuntu 24.04)
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-sudo ./aws/install
-rm -rf aws awscliv2.zip
+# Install Docker Compose v2 standalone binary (works on ALL Ubuntu versions)
+COMPOSE_URL="https://github.com/docker/compose/releases/download/v2.24.5/docker-compose-$(uname -s)-$(uname -m)"
+curl -sSL "$COMPOSE_URL" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+ln -sf /usr/local/bin/docker-compose /usr/bin/docker-compose
+echo "✔ Docker Compose installed: $(/usr/local/bin/docker-compose version)"
 
+# Install AWS CLI v2
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip -q awscliv2.zip
+./aws/install
+rm -rf aws awscliv2.zip
 echo "✔ Docker & AWS CLI installed"
 
 # ── 3. Clone Application ──────────────────────────────────────────────────────
 cd /home/ubuntu
 git clone https://github.com/3MR-MLops/web-app.git
 cd web-app/web-app/ecommerce-microservices
-echo "✔ Repository cloned"
+echo "✔ Repository cloned at: $(pwd)"
 
 # ── 4. Create .env File ───────────────────────────────────────────────────────
 cat > .env << 'EOF'
@@ -53,15 +58,15 @@ echo "✔ .env created"
 
 # ── 5. Start Infrastructure Services First (DBs, Cache) ───────────────────────
 echo ">>> Starting infrastructure services..."
-docker compose up -d mongodb redis db
+docker-compose up -d mongodb redis db
 sleep 20
 echo "✔ DBs & Redis up"
 
 # ── 6. Build Nginx (serves frontend immediately → ALB health check passes) ────
 echo ">>> Building nginx..."
-docker compose build nginx
-docker compose up -d nginx
-echo "✔ Nginx up — ALB health check will pass now"
+docker-compose build nginx
+docker-compose up -d nginx
+echo "✔ Nginx up"
 
 # Wait and confirm nginx is serving
 sleep 5
@@ -71,16 +76,16 @@ echo ">>> Nginx health check: HTTP $HTTP_CODE"
 # ── 7. Build Backend Services Sequentially (save RAM on t3.micro) ─────────────
 for service in user-service catalog-services cart-services order-services payment-service; do
   echo ">>> Building: $service"
-  docker compose build "$service"
-  docker compose up -d "$service"
+  docker-compose build "$service"
+  docker-compose up -d "$service"
   sleep 15
 done
 
 echo "✔ All backend services started"
 
 # ── 8. Final reconciliation ────────────────────────────────────────────────────
-docker compose up -d
-echo "✔ docker compose up -d complete"
+docker-compose up -d
+echo "✔ docker-compose up -d complete"
 
 # ── 9. Seed Products (wait for catalog to be ready) ───────────────────────────
 echo ">>> Waiting for catalog service to be ready..."
@@ -96,7 +101,7 @@ for i in $(seq 1 12); do
 done
 
 # ── 10. Show running containers ────────────────────────────────────────────────
-docker compose ps
+docker-compose ps
 echo "=== ShopMicro Deploy Complete: $(date) ==="
 
 # ── 11. Setup MongoDB → S3 Backup Cron (every 6 hours) ───────────────────────
@@ -107,7 +112,7 @@ BUCKET="${s3_bucket}"
 COMPOSE_DIR=/home/ubuntu/web-app/web-app/ecommerce-microservices
 
 cd $COMPOSE_DIR
-CONTAINER=$(docker compose ps -q mongodb 2>/dev/null | head -1)
+CONTAINER=$(docker-compose ps -q mongodb 2>/dev/null | head -1)
 if [ -z "$CONTAINER" ]; then
   echo "[$TIMESTAMP] MongoDB container not found, skipping backup"
   exit 1
