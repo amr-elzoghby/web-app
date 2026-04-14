@@ -18,18 +18,18 @@ echo "✔ Swap 2GB enabled"
 
 # ── 2. System Dependencies ────────────────────────────────────────────────────
 apt-get update -y
-apt-get install -y docker.io git curl awscli
+apt-get install -y docker.io git curl unzip
 systemctl start docker
 systemctl enable docker
 usermod -aG docker ubuntu
-echo "✔ Docker installed: $(docker --version)"
 
-# Install Docker Compose v2 plugin
-mkdir -p /usr/local/lib/docker/cli-plugins
-curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
-  -o /usr/local/lib/docker/cli-plugins/docker-compose
-chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
-echo "✔ Docker Compose installed: $(docker compose version)"
+# Install AWS CLI v2 (more reliable than apt for Ubuntu 24.04)
+curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+unzip awscliv2.zip
+sudo ./aws/install
+rm -rf aws awscliv2.zip
+
+echo "✔ Docker & AWS CLI installed"
 
 # ── 3. Clone Application ──────────────────────────────────────────────────────
 cd /home/ubuntu
