@@ -10,7 +10,7 @@ COPY frontend/js/         /usr/share/nginx/html/js/
 COPY frontend/images/     /usr/share/nginx/html/images/
 
 
-COPY nginx/nginx.conf /etc/nginx/nginx.conf
+COPY ecommerce-microservices/nginx/nginx.conf /etc/nginx/nginx.conf
 
 EXPOSE 80
 

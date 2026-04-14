@@ -18,6 +18,8 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: "${MONGO_ROOT_PASSWORD}"
     ports:
       - "27018:27017"
+    volumes:
+      - login-data:/data/db
 
   redis:
     image: redis:alpine
@@ -72,7 +74,19 @@ services:
       - mongodb
 
   nginx:
-    image: 3mrlmlops/webapp-frontend:latest
+    build:
+      context: ..
+      dockerfile: ecommerce-microservices/nginx/Dockerfile
     restart: always
     ports:
       - "80:80"
+    depends_on:
+      - user-service
+      - catalog-services
+      - cart-services
+      - order-services
+      - payment-service
+
+volumes:
+  login-data:
+    name: login-data
