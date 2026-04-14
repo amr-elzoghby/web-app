@@ -120,7 +120,7 @@ fi
 
 docker exec "$CONTAINER" \
   mongodump --uri="mongodb://admin:Amr123@localhost:27017/admin?authSource=admin" \
-  --archive="/tmp/mongo-backup-$TIMESTAMP.gz" --gzip 2>/dev/null
+  --archive --gzip 2>/dev/null > "/tmp/mongo-backup-$TIMESTAMP.gz"
 
 aws s3 cp "/tmp/mongo-backup-$TIMESTAMP.gz" \
   "s3://$BUCKET/mongodb-backups/mongo-backup-$TIMESTAMP.gz"
