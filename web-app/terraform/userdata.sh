@@ -1,30 +1,42 @@
 #!/bin/bash
-
-# ── Log everything ──
+# =============================================================================
+# ShopMicro - EC2 User Data Bootstrap Script
+# Runs once on first launch. All output is logged to /var/log/userdata.log
+# =============================================================================
 exec > /var/log/userdata.log 2>&1
-echo "=== Final Architecture Deploy $(date) ==="
+echo "=== ShopMicro Deploy Start: $(date) ==="
 
-# ── Swap Space (Crucial) ──
-sudo fallocate -l 2G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
+# ── 1. Swap Space (critical for t3.micro — only 1GB RAM) ──────────────────────
+fallocate -l 2G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+echo "✔ Swap enabled"
 
-# ── Dependencies ──
-sudo apt-get update -y
-sudo apt-get install -y docker.io git
-sudo systemctl start docker
-sudo systemctl enable docker
+# ── 2. System Dependencies ────────────────────────────────────────────────────
+apt-get update -y
+apt-get install -y docker.io git awscli
+systemctl start docker
+systemctl enable docker
+usermod -aG docker ubuntu
+echo "✔ Docker installed"
 
-sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-sudo chmod +x /usr/local/bin/docker-compose
+# Install Docker Compose v2 plugin
+mkdir -p /usr/local/lib/docker/cli-plugins
+curl -sSL "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" \
+  -o /usr/local/lib/docker/cli-plugins/docker-compose
+chmod +x /usr/local/lib/docker/cli-plugins/docker-compose
+echo "✔ Docker Compose installed"
 
-# ── Clone & Env ──
+# ── 3. Clone Application ──────────────────────────────────────────────────────
 cd /home/ubuntu
-sudo git clone https://github.com/3MR-MLops/ecommerce-microservices.git
-cd ecommerce-microservices
+git clone https://github.com/3MR-MLops/web-app.git
+cd web-app/ecommerce-microservices
+echo "✔ Repository cloned"
 
-sudo tee .env > /dev/null <<'EOF'
+# ── 4. Create .env File ───────────────────────────────────────────────────────
+cat > .env << 'EOF'
 MONGO_ROOT_USER=admin
 MONGO_ROOT_PASSWORD=Amr123
 MONGO_URI=mongodb://admin:Amr123@mongodb:27017/admin?authSource=admin
@@ -33,22 +45,62 @@ POSTGRES_PASSWORD=Amrsaad010900
 POSTGRES_DB=payment_service_db
 JWT_SECRET=Amrsaad010900
 REDIS_HOST=redis
+S3_BACKUP_BUCKET=${s3_bucket}
 EOF
+echo "✔ .env created"
 
-# ── 🚨 NEW STRATEGY: Nginx First! 🚨 ──
-echo "Building NGINX first for immediate availability..."
-sudo docker-compose build nginx
-sudo docker-compose up -d nginx
+# ── 5. Build & Start Services (sequential to stay within RAM limits) ──────────
+echo "Building nginx first for immediate frontend availability..."
+docker compose build nginx
+docker compose up -d nginx
 
-# ── Build others in background to save RAM ──
-echo "Building background services sequentially..."
-for s in catalog-services cart-services order-services user-service payment-service; do
-  sudo docker-compose build $s
-  sudo docker-compose up -d $s
+echo "Starting backend services sequentially..."
+for service in mongodb redis db user-service catalog-services cart-services order-services payment-service; do
+  echo "Starting: $service"
+  docker compose up -d "$service"
   sleep 10
 done
 
-# Final catch-all
-sudo docker-compose up -d
+# Final reconciliation — start anything still stopped
+docker compose up -d
+echo "✔ All services started"
 
-echo "=== Deployment stable at $(date) ==="
+# ── 6. Seed Products ──────────────────────────────────────────────────────────
+sleep 20
+echo "Seeding catalog with sample products..."
+curl -s -X POST http://localhost/api/products/seed || true
+echo "✔ Catalog seeded"
+
+# ── 7. Setup MongoDB → S3 Backup Cron (runs every 6 hours) ───────────────────
+cat > /usr/local/bin/backup-mongo.sh << 'BACKUP_EOF'
+#!/bin/bash
+TIMESTAMP=$(date +%Y-%m-%dT%H-%M-%S)
+BUCKET="${s3_bucket}"
+
+echo "[$TIMESTAMP] Starting MongoDB backup..."
+
+# Dump from the running MongoDB container
+docker exec ecommerce-microservices-mongodb-1 \
+  mongodump --uri="mongodb://admin:Amr123@localhost:27017/admin?authSource=admin" \
+  --out="/tmp/mongodump-$TIMESTAMP" 2>/dev/null
+
+# Compress
+tar -czf "/tmp/mongo-backup-$TIMESTAMP.tar.gz" -C /tmp "mongodump-$TIMESTAMP"
+
+# Upload to S3
+aws s3 cp "/tmp/mongo-backup-$TIMESTAMP.tar.gz" \
+  "s3://$BUCKET/mongodb-backups/mongo-backup-$TIMESTAMP.tar.gz"
+
+# Cleanup local temp files
+rm -rf "/tmp/mongodump-$TIMESTAMP" "/tmp/mongo-backup-$TIMESTAMP.tar.gz"
+
+echo "[$TIMESTAMP] Backup uploaded to s3://$BUCKET/mongodb-backups/"
+BACKUP_EOF
+
+chmod +x /usr/local/bin/backup-mongo.sh
+
+# Add cron job — every 6 hours
+(crontab -l 2>/dev/null; echo "0 */6 * * * /usr/local/bin/backup-mongo.sh >> /var/log/mongo-backup.log 2>&1") | crontab -
+echo "✔ MongoDB backup cron job configured (every 6 hours → s3://${s3_bucket})"
+
+echo "=== ShopMicro Deploy Complete: $(date) ==="
