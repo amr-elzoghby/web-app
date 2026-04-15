@@ -15,6 +15,7 @@ connectRedis().then(() => {
 
   app.listen(PORT, () => {
     console.log(`[Cart Service] Running on http://localhost:${PORT}`);
+    console.log(`[CI/CD Test] Pipeline verification log added on ${new Date().toISOString()}`);
   });
 }).catch(err => {
   console.error('[Cart Service] Failed to start:', err.message);
