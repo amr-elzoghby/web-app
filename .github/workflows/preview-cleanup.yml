@@ -1,0 +1,64 @@
+# =============================================================================
+# Unified — Cleanup ALL PR Preview Environments
+# When a PR is closed/merged, remove all temporary preview manifests
+# =============================================================================
+name: "Cleanup: PR Preview Environments"
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  delete-preview-manifests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=pr-${{ github.event.pull_request.number }}" >> $GITHUB_ENV
+
+      - name: Checkout GitOps Repo
+        uses: actions/checkout@v4
+        with:
+          repository: 3MR-MLops/web-app-gitops
+          token: ${{ secrets.GITOPS_TOKEN }}
+          path: gitops-folder
+
+      - name: Remove All Preview Manifests for this PR
+        run: |
+          cd gitops-folder
+
+          echo "🧹 Cleaning up preview manifests for ${{ env.IMAGE_TAG }}..."
+
+          # Remove all preview manifests matching this PR number
+          PREVIEW_FILES=$(ls deployment-*-${{ env.IMAGE_TAG }}.yaml 2>/dev/null || true)
+
+          if [ -n "$PREVIEW_FILES" ]; then
+            for file in $PREVIEW_FILES; do
+              echo "  Removing: $file"
+              rm -f "$file"
+            done
+          fi
+
+          # Also remove the old-style frontend-only manifest (backward compat)
+          if [ -f "deployment-${{ env.IMAGE_TAG }}.yaml" ]; then
+            echo "  Removing: deployment-${{ env.IMAGE_TAG }}.yaml"
+            rm -f "deployment-${{ env.IMAGE_TAG }}.yaml"
+          fi
+
+          echo "✔ Cleanup complete"
+
+      - name: Push Changes to GitOps Repo
+        run: |
+          cd gitops-folder
+
+          git config user.name "GitHub Actions Bot"
+          git config user.email "bot@github.com"
+
+          if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "Cleanup all preview environments for ${{ env.IMAGE_TAG }}"
+            git push
+            echo "✔ Preview manifests removed and pushed"
+          else
+            echo "ℹ️ No preview files to cleanup."
+          fi

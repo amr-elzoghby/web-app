@@ -1,14 +1,18 @@
-name: Deploy Frontend
+# =============================================================================
+# Catalog Service — Build & Deploy to Production
+# Triggers on push to main when catalog-service code changes
+# =============================================================================
+name: "Backend: Deploy Catalog Service"
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
-      - 'web-app/frontend/**'
+      - "web-app/ecommerce-microservices/services/catalog-service/**"
   pull_request:
-    branches: [ "main", "feature/*" ]
+    branches: ["main", "feature/*"]
     paths:
-      - 'web-app/frontend/**'
+      - "web-app/ecommerce-microservices/services/catalog-service/**"
 
 jobs:
   build-and-deploy:
@@ -30,9 +34,9 @@ jobs:
       - name: Build and Push Docker Image
         uses: docker/build-push-action@v5
         with:
-          context: ./web-app/frontend
+          context: ./web-app/ecommerce-microservices/services/catalog-service
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/webapp-frontend:v${{ github.run_number }}
+          tags: ${{ secrets.DOCKER_USERNAME }}/webapp-catalog-service:v${{ github.run_number }}
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -44,12 +48,12 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           git clone https://${{ secrets.GITOPS_TOKEN }}@github.com/3MR-MLops/web-app-gitops.git gitops-repo
-          
+
           cd gitops-repo
-          sed -i "s/tag: .*/tag: v${{ github.run_number }}/" deployment.yaml
-          
+          sed -i '/image: webapp-catalog-service/{n;s/tag: .*/tag: "v${{ github.run_number }}"/}' deployment.yaml
+
           git add deployment.yaml
-          git commit -m "Update image tag to v${{ github.run_number }} [skip ci]"
+          git commit -m "Update catalog-service image tag to v${{ github.run_number }} [skip ci]"
           git push

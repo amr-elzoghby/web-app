@@ -1,11 +1,17 @@
-name: Deploy PR Preview
+# =============================================================================
+# Frontend — PR Preview Environment
+# Creates a temporary preview environment when a PR is labeled 'pr-deploy'
+# =============================================================================
+name: "Frontend: PR Preview"
 
 on:
   pull_request:
     types: [labeled]
+    paths:
+      - "web-app/frontend/**"
 
 jobs:
-  build-and-update:
+  build-and-preview:
     if: github.event.label.name == 'pr-deploy'
     runs-on: ubuntu-latest
 
@@ -40,14 +46,14 @@ jobs:
       - name: Create Temporary Manifest
         run: |
           cd gitops-folder
-          cp deployment.yaml deployment-${{ env.IMAGE_TAG }}.yaml
-          sed -i "s|image: .*|image: ${{ secrets.DOCKER_USERNAME }}/webapp-frontend:${{ env.IMAGE_TAG }}|g" deployment-${{ env.IMAGE_TAG }}.yaml
+          cp deployment.yaml deployment-frontend-${{ env.IMAGE_TAG }}.yaml
+          sed -i '/image: webapp-frontend/{n;s/tag: .*/tag: "${{ env.IMAGE_TAG }}"/}' deployment-frontend-${{ env.IMAGE_TAG }}.yaml
 
-      - name: Push new file to GitOps Repo
+      - name: Push to GitOps Repo
         run: |
           cd gitops-folder
           git config user.name "GitHub Actions Bot"
           git config user.email "bot@github.com"
-          git add deployment-${{ env.IMAGE_TAG }}.yaml
-          git commit -m "Deploy preview environment for ${{ env.IMAGE_TAG }}"
+          git add deployment-frontend-${{ env.IMAGE_TAG }}.yaml
+          git commit -m "Deploy frontend preview for ${{ env.IMAGE_TAG }}"
           git push
