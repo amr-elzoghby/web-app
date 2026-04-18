@@ -51,3 +51,29 @@ resource "aws_security_group" "app" {
     Name = "${var.name_prefix}-app-sg"
   }
 }
+
+# ─── VPC Endpoints Security Group ─────────────────────────────────────────────
+resource "aws_security_group" "vpc_endpoints" {
+  name        = "${var.name_prefix}-vpc-endpoints-sg"
+  description = "Security group for VPC endpoints - allows HTTPS from App/EC2"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app.id]
+  }
+
+  # Outbound not strictly required for Interface Endpoints, but good practice
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${var.name_prefix}-vpc-endpoints-sg"
+  }
+}

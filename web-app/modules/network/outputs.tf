@@ -18,7 +18,4 @@ output "alb_security_group_id" {
   value = aws_security_group.alb.id
 }
 
-output "nat_gateway_ip" {
-  value = aws_eip.nat.public_ip
-}
 

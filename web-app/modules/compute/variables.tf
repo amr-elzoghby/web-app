@@ -35,10 +35,11 @@ variable "all_traffic_cidr" {
 }
 
 variable "ami_id" {
-
   description = "AMI ID for EC2 instances"
   type        = string
+  default     = "ami-05e24b94ae885834e"
 }
+
 
 variable "instance_type" {
   description = "EC2 instance type"
@@ -143,6 +144,18 @@ variable "lambda_timeout" {
   description = "Lambda timeout"
   type        = number
   default     = 30
+}
+
+variable "network_remote_state_key" {
+  description = "S3 key for the network remote state"
+  type        = string
+  default     = "network/terraform.tfstate"
+}
+
+variable "storage_remote_state_key" {
+  description = "S3 key for the storage remote state"
+  type        = string
+  default     = "storage/terraform.tfstate"
 }
 
 variable "db_password" {

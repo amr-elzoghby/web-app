@@ -3,7 +3,7 @@ data "terraform_remote_state" "network" {
 
   config = {
     bucket = "tf-state-ecommerce-microservices-3mr"
-    key    = "network/terraform.tfstate"
+    key    = var.network_remote_state_key
     region = "us-east-1"
   }
 }
@@ -13,10 +13,11 @@ data "terraform_remote_state" "storage" {
 
   config = {
     bucket = "tf-state-ecommerce-microservices-3mr"
-    key    = "storage/terraform.tfstate"
+    key    = var.storage_remote_state_key
     region = "us-east-1"
   }
 }
+
 
 
 
@@ -26,8 +27,8 @@ locals {
   private_subnet_ids    = data.terraform_remote_state.network.outputs.private_subnet_ids
   app_security_group_id = data.terraform_remote_state.network.outputs.app_security_group_id
   alb_security_group_id = data.terraform_remote_state.network.outputs.alb_security_group_id
-  nat_gateway_ip        = data.terraform_remote_state.network.outputs.nat_gateway_ip
   
   s3_bucket_name        = data.terraform_remote_state.storage.outputs.bucket_name
+
   s3_bucket_arn         = data.terraform_remote_state.storage.outputs.bucket_arn
 }
