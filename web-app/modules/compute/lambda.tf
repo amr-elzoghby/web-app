@@ -7,7 +7,7 @@ data "archive_file" "payment_lambda" {
 
 # ─── Lambda IAM Role ─────────────────────────────────────────────────────────
 resource "aws_iam_role" "payment_lambda_role" {
-  name = "${local.name_prefix}-payment-lambda-role"
+  name = "${var.name_prefix}-payment-lambda-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -28,19 +28,19 @@ resource "aws_iam_role_policy_attachment" "lambda_basic_execution" {
 
 # ─── Lambda Security Group ──────────────────────────────────────────────────
 resource "aws_security_group" "lambda" {
-  name        = "${local.name_prefix}-lambda-sg"
+  name        = "${var.name_prefix}-lambda-sg"
   description = "Security group for payment lambda"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = local.vpc_id
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port   = var.any_port
+    to_port     = var.any_port
+    protocol    = var.any_protocol
+    cidr_blocks = var.all_traffic_cidr
   }
 
   tags = {
-    Name = "${local.name_prefix}-lambda-sg"
+    Name = "${var.name_prefix}-lambda-sg"
   }
 }
 
@@ -50,7 +50,7 @@ resource "aws_security_group_rule" "lambda_to_db" {
   from_port                = 5432
   to_port                  = 5432
   protocol                 = "tcp"
-  security_group_id        = aws_security_group.app.id
+  security_group_id        = local.app_security_group_id
   source_security_group_id = aws_security_group.lambda.id
   description              = "Allow PostgreSQL traffic from Lambda"
 }
@@ -59,16 +59,18 @@ resource "aws_security_group_rule" "lambda_to_db" {
 resource "aws_lambda_function" "payment_processor" {
   filename         = data.archive_file.payment_lambda.output_path
   source_code_hash = data.archive_file.payment_lambda.output_base64sha256
-  function_name    = "${local.name_prefix}-payment-processor"
+  function_name    = "${var.name_prefix}-payment-processor"
   role             = aws_iam_role.payment_lambda_role.arn
   handler          = "lambda_handler.handler"
-  runtime          = "python3.12"
-  timeout          = 30
+  runtime          = var.lambda_runtime
+  timeout          = var.lambda_timeout
 
   vpc_config {
-    subnet_ids         = [aws_subnet.private_1.id, aws_subnet.private_2.id]
+    subnet_ids         = local.private_subnet_ids
     security_group_ids = [aws_security_group.lambda.id]
   }
+
+
 
   environment {
     variables = {
@@ -89,9 +91,10 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
 
 # ─── API Gateway (to expose Lambda) ──────────────────────────────────────────
 resource "aws_apigatewayv2_api" "payment_api" {
-  name          = "${local.name_prefix}-payment-api"
+  name          = "${var.name_prefix}-payment-api"
   protocol_type = "HTTP"
 }
+
 
 resource "aws_apigatewayv2_integration" "lambda_integration" {
   api_id           = aws_apigatewayv2_api.payment_api.id

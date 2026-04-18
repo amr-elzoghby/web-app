@@ -48,9 +48,9 @@ MONGO_ROOT_USER=admin
 MONGO_ROOT_PASSWORD=Amr123
 MONGO_URI=mongodb://admin:Amr123@mongodb:27017/admin?authSource=admin
 POSTGRES_USER=postgres
-POSTGRES_PASSWORD=Amrsaad010900
+POSTGRES_PASSWORD=${db_password}
 POSTGRES_DB=payment_service_db
-JWT_SECRET=Amrsaad010900
+JWT_SECRET=${db_password}
 REDIS_HOST=redis
 S3_BACKUP_BUCKET=${s3_bucket}
 EOF

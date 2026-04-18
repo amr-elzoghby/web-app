@@ -1,6 +1,6 @@
 # ─── IAM Role for EC2 (SSM access + S3 write) ────────────────────────────────
 resource "aws_iam_role" "ec2" {
-  name        = "${local.name_prefix}-ec2-role"
+  name        = "${var.name_prefix}-ec2-role"
  description = "Role assumed by EC2 instances - allows SSM access and S3 writes for backups"
 
   assume_role_policy = jsonencode({
@@ -37,9 +37,10 @@ resource "aws_iam_role_policy" "s3_backup" {
           "s3:ListBucket"
         ]
         Resource = [
-          aws_s3_bucket.customer_data.arn,
-          "${aws_s3_bucket.customer_data.arn}/*"
+          local.s3_bucket_arn,
+          "${local.s3_bucket_arn}/*"
         ]
+
       }
     ]
   })
@@ -47,6 +48,7 @@ resource "aws_iam_role_policy" "s3_backup" {
 
 # ─── Instance Profile ─────────────────────────────────────────────────────────
 resource "aws_iam_instance_profile" "ec2" {
-  name = "${local.name_prefix}-ec2-profile"
+  name = "${var.name_prefix}-ec2-profile"
   role = aws_iam_role.ec2.name
 }
+

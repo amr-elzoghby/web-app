@@ -367,7 +367,7 @@ input::placeholder { color: var(--text-faint); }
 .section-title {
   font-size: 1.7rem;
   font-weight: 800;
-  background: linear-gradient(135deg, #fff 40%, var(--primary-light));
+  background: linear-gradient(135deg, #f4c1c1 40%, var(--primary-light));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
