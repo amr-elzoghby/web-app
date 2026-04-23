@@ -1,7 +1,7 @@
 resource "aws_cloudfront_distribution" "main" {
   enabled             = true
   is_ipv6_enabled     = true
-  default_root_object = "" # The ALB handles the root path
+  default_root_object = "" 
 
   # 1. Origin: Connects CloudFront to your Load Balancer (ALB)
   origin {
