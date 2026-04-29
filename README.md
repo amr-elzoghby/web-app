@@ -35,7 +35,8 @@
 ├── .github/workflows/    # OIDC-based CI/CD (6 Deploy + 6 Preview + Cleanup)
 ├── web-app/
 │   ├── ecommerce-microservices/ # Main App (Nginx, 5 Microservices, Compose)
-│   ├── modules/          # Reusable IaC: [Network, Compute, Storage, IAM]
+│   ├── k8s/              # Kubernetes Manifests (Apps, DBs, Secrets, Ingress)
+│   ├── modules/          # Reusable IaC: [Network, Compute, Storage, IAM, EKS]
 │   └── environments/     # Layered Orchestration (Dev/Prod)
 └── docs/images/          # System Architecture Diagrams
 ```
@@ -48,13 +49,13 @@ Modular Terraform with **Isolated State Layers** to minimize blast radius:
 
 1.  **Network**: VPC, Public/Private Subnets, Security Groups, VPC Endpoints.
 2.  **Storage**: Encrypted S3 buckets with Versioning and Lifecycle policies.
-3.  **Compute**: Launch Templates (IMDSv2), ALB, ASG, and Lambda/API Gateway.
+3.  **Compute / EKS**: Elastic Kubernetes Service (EKS) clusters or EC2 Auto Scaling Groups.
 
 **Deployment (Dev/Prod):**
 ```bash
 cd environments/<env>/network && terraform apply
 cd environments/<env>/storage && terraform apply
-cd environments/<env>/compute && terraform apply
+cd environments/<env>/eks && terraform apply
 ```
 
 ---

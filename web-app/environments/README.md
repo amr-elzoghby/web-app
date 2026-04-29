@@ -4,7 +4,7 @@ This directory contains the root orchestration files for different deployment en
 
 ## Structure
 - Each environment (e.g., `dev`, `prod`) acts as a standalone Terraform project.
-- Each environment is subdivided into layers (`network`, `storage`, `compute`) to ensure isolated state files for each component.
+- Each environment is subdivided into layers (`network`, `storage`, `compute`, `eks`) to ensure isolated state files for each component.
 
 ## How to Deploy
 
@@ -19,7 +19,7 @@ terraform init
 Due to dependencies, deploy in this order:
 1.  **Network**: `cd environments/<env>/network && terraform apply`
 2.  **Storage**: `cd environments/<env>/storage && terraform apply`
-3.  **Compute**: `cd environments/<env>/compute && terraform apply`
+3.  **EKS / Compute**: `cd environments/<env>/eks && terraform apply`
 
 ## Key Differences
 
