@@ -7,7 +7,7 @@ variable "environment" {
 variable "aws_region" {
   description = "AWS region"
   type        = string
-  default     = "me-south-1"
+  default     = "us-east-1"
 }
 
 variable "name_prefix" {
