@@ -60,6 +60,18 @@ cd environments/<env>/eks && terraform apply
 
 ---
 
+### ☸️ Kubernetes Orchestration (EKS)
+
+The application has been modernized to run on **Amazon Elastic Kubernetes Service (EKS)**, ensuring high availability, scalable deployments, and robust resource isolation:
+
+- **Namespaces**: Separation of concerns via dedicated namespaces: `ecommerce-apps` (microservices), `ecommerce-data` (databases), and `ecommerce-ingress` (routing).
+- **Ingress Controller**: Utilizes the **AWS Load Balancer Controller** to provision an internet-facing ALB that intelligently routes traffic to specific services using path-based rules (`/api/users`, `/api/cart`, etc.).
+- **Stateful Deployments**: Databases (MongoDB, PostgreSQL) are deployed as `StatefulSets` with dynamically provisioned `PersistentVolumeClaims (PVCs)` to ensure data durability across pod restarts.
+- **Secrets Management**: Sensitive credentials and connection strings are securely stored as Kubernetes `Secret` objects, injected into pods at runtime, and completely omitted from version control.
+- **Headless Services**: Databases utilize `clusterIP: None` headless services to provide stable DNS resolution for stateful pods.
+
+---
+
 ### 🔄 CI/CD Pipelines
 
 #### Production Delivery (`main` branch)
