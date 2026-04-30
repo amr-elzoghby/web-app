@@ -9,6 +9,7 @@ Welcome! This guide will help you set up your development environment and unders
 To help with this project, you need:
 - **AWS CLI**: Configured with credentials that have sufficient permissions (Compute/Network/S3).
 - **Terraform (v1.5+)**: For infrastructure changes.
+- **kubectl**: For interacting with the EKS cluster.
 - **Docker & Docker Compose**: For local testing and image building.
 - **Node.js (v18+)** & **Python (v3.12)**: For local service development.
 
@@ -42,7 +43,19 @@ We use a **layered state strategy**. If you are modifying the infrastructure, fo
 3. **Deployment Order**:
    1. `network`: VPC and Security components.
    2. `storage`: S3 buckets.
-   3. `compute`: ECR, ALB, ASG, and Lambda.
+   3. `eks`: Amazon EKS Cluster and Worker Nodes.
+
+---
+
+## ☸️ Kubernetes (K8s) Workflow
+
+While local development uses `docker-compose`, production runs on **Kubernetes (EKS)**.
+
+1. **Manifests Location**: All K8s YAML files are stored in `web-app/k8s/`.
+2. **Applying Changes**: 
+   - Always apply namespaces and secrets first.
+   - Run: `kubectl apply -f web-app/k8s/namespaces/` then `databases/`, `apps/`, and `ingress/`.
+3. **Secrets Management**: Never commit actual secrets. Use `k8s/secrets/` locally, but ensure it remains in `.gitignore`.
 
 ---
 
