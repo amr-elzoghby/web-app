@@ -75,3 +75,8 @@ variable "remote_state_bucket" {
   description = "S3 bucket name for remote state"
   type        = string
 }
+variable "node_capacity_type" {
+  description = "Capacity type of the node group"
+  type        = string
+  default     = "ON_DEMAND"
+}

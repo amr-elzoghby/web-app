@@ -23,6 +23,7 @@ spec:
       port: 5432
       targetPort: 5432
   clusterIP: None
+
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -40,6 +41,8 @@ spec:
       labels:
         app: postgres
     spec:
+      nodeSelector:
+        role: stable
       containers:
       - name: postgres-container
         image: postgres:15
